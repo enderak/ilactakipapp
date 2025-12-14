@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anoro İlaç Takip</title>
+    <meta name="theme-color" content="#4CAF50">
+    
+    <!-- TEK CSS -->
+    <style>
+        /* RESET */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; background: #f0f9ff; }
+        
+        /* BAŞLIK */
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #2a6a9a; margin-bottom: 5px; }
+        
+        /* ANA KART */
+        .card { background: white; padding: 25px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        /* İLAÇ BİLGİSİ */
+        .medicine-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .medicine-name { font-size: 24px; font-weight: bold; color: #1a365d; }
+        .medicine-dose { background: #e8f4f8; padding: 5px 15px; border-radius: 15px; color: #2a6a9a; }
+        
+        /* ANA BUTON */
+        .take-btn { 
+            width: 100%; 
+            padding: 25px; 
+            background: #4CAF50; 
+            color: white; 
+            border: none; 
+            border-radius: 15px; 
+            font-size: 22px; 
+            font-weight: bold; 
+            margin: 20px 0; 
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .take-btn:active { transform: scale(0.98); background: #388e3c; }
+        
+        /* İSTATİSTİKLER */
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
+        .stat { background: #f7fafc; padding: 15px; border-radius: 10px; text-align: center; }
+        .stat-value { font-size: 24px; font-weight: bold; color: #2a6a9a; }
+        .stat-label { font-size: 12px; color: #666; }
+        
+        /* MENÜ */
+        .menu { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
+        .menu-btn { 
+            background: white; 
+            padding: 15px; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 12px; 
+            font-size: 14px; 
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .menu-btn:active { background: #f0f0f0; }
+        
+        /* SAYFALAR */
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        /* STOK */
+        .stock-count { font-size: 60px; font-weight: bold; text-align: center; margin: 20px 0; color: #4CAF50; }
+        .stock-count.low { color: #ff9800; }
+        .stock-count.critical { color: #f44336; animation: pulse 1s infinite; }
+        
+        /* TAKVİM */
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin: 20px 0; }
+        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: #f5f5f5; }
+        .day.taken { background: #e8f5e9; color: #2e7d32; }
+        .day.missed { background: #ffebee; color: #c62828; }
+        .day.today { background: #2a6a9a; color: white; }
+        
+        /* ANİMASYON */
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        
+        /* RESPONSIVE */
+        @media (max-width: 600px) {
+            .menu { grid-template-columns: repeat(2, 1fr); }
+            .stats { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- BAŞLIK -->
+    <div class="header">
+        <h1>💊 Anoro İlaç Takip</h1>
+        <p style="color: #666;">KOAH ilacınızı düzenli takip edin</p>
+    </div>
+
+    <!-- MENÜ -->
+    <div class="menu">
+        <button class="menu-btn" onclick="showPage('home')">
+            <span style="font-size: 20px;">🏠</span>
+            <span>Ana Sayfa</span>
+        </button>
+        <button class="menu-btn" onclick="showPage('calendar')">
+            <span style="font-size: 20px;">📅</span>
+            <span>Takvim</span>
+        </button>
+        <button class="menu-btn" onclick="showPage('stock')">
+            <span style="font-size: 20px;">📦</span>
+            <span>Stok</span>
+        </button>
+        <button class="menu-btn" onclick="showPage('settings')">
+            <span style="font-size: 20px;">⚙️</span>
+            <span>Ayarlar</span>
+        </button>
+    </div>
+
+    <!-- ANA SAYFA -->
+    <div id="home-page" class="page active">
+        <div class="card">
+            <div class="medicine-info">
+                <div>
+                    <div class="medicine-name">Anoro Ellipta</div>
+                    <div class="medicine-dose">1 doz/gün</div>
+                </div>
+                <div id="today-status" style="color: #4CAF50; font-weight: bold;">✅</div>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <div style="color: #666; margin-bottom: 5px;">Sonraki doz:</div>
+                <div id="next-dose" style="font-size: 20px; font-weight: bold; color: #2a6a9a;">Yarın 08:00</div>
+            </div>
+            
+            <button class="take-btn" onclick="takeMedicine()">
+                <span style="font-size: 32px;">💊</span>
+                <span>İlacımı Aldım</span>
+                <span id="last-time" style="font-size: 14px; opacity: 0.8;">--:--</span>
+            </button>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="week-rate">0%</div>
+                    <div class="stat-label">Bu Hafta</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="month-rate">0%</div>
+                    <div class="stat-label">Bu Ay</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="stock">0</div>
+                    <div class="stat-label">Kalan Doz</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom: 15px; color: #2a6a9a;">⏰ Hatırlatıcı</h3>
+            <input type="time" id="reminder" value="08:00" style="width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 10px; margin-bottom: 15px;">
+            <button onclick="setReminder()" style="width: 100%; padding: 15px; background: #2a6a9a; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;">
+                Hatırlatıcıyı Kaydet
+            </button>
+        </div>
+    </div>
+
+    <!-- TAKVİM -->
+    <div id="calendar-page" class="page">
+        <div class="card">
+            <h3 style="margin-bottom: 20px; color: #2a6a9a;">📅 İlaç Takvimi</h3>
+            <div class="calendar" id="calendar">
+                <!-- JS ile doldurulacak -->
+            </div>
+            <div style="margin-top: 30px;">
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value" id="taken">0</div>
+                        <div class="stat-label">Alınan</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="missed">0</div>
+                        <div class="stat-label">Kaçırılan</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="rate">0%</div>
+                        <div class="stat-label">Uyum</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STOK -->
+    <div id="stock-page" class="page">
+        <div class="card">
+            <h3 style="margin-bottom: 20px; color: #2a6a9a;">📦 İlaç Stok</h3>
+            
+            <div style="text-align: center;">
+                <div style="color: #666; margin-bottom: 10px;">Kalan Doz</div>
+                <div class="stock-count" id="stock-count">0</div>
+                <div id="stock-status" style="color: #666; margin: 20px 0;">Durum: İyi</div>
+                
+                <div style="height: 20px; background: #e0e0e0; border-radius: 10px; margin: 30px 0; overflow: hidden;">
+                    <div id="stock-bar" style="height: 100%; background: #4CAF50; width: 50%;"></div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <button onclick="addStock(30)" style="padding: 15px; background: #4CAF50; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;">
+                        ➕ 30 Doz Ekle
+                    </button>
+                    <button onclick="adjustStock()" style="padding: 15px; background: #2a6a9a; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;">
+                        ⚙️ Stok Ayarla
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AYARLAR -->
+    <div id="settings-page" class="page">
+        <div class="card">
+            <h3 style="margin-bottom: 20px; color: #2a6a9a;">⚙️ Ayarlar</h3>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: bold;">Koyu Tema</label>
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="dark-mode" onchange="toggleDarkMode()">
+                    <span>Gece modunu aç</span>
+                </label>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: bold;">Bildirimler</label>
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="notifications" checked onchange="saveSetting('notifications', this.checked)">
+                    <span>İlaç hatırlatıcıları</span>
+                </label>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <h4 style="margin-bottom: 15px; color: #2a6a9a;">📊 Veri Yönetimi</h4>
+                <div style="display: grid; gap: 10px;">
+                    <button onclick="exportData()" style="padding: 15px; background: #2a6a9a; color: white; border: none; border-radius: 10px; cursor: pointer;">
+                        📥 Verileri Yedekle
+                    </button>
+                    <button onclick="importData()" style="padding: 15px; background: #e8f4f8; color: #2a6a9a; border: none; border-radius: 10px; cursor: pointer;">
+                        📤 Yedekten Geri Yükle
+                    </button>
+                    <button onclick="clearData()" style="padding: 15px; background: #ffebee; color: #c62828; border: none; border-radius: 10px; cursor: pointer;">
+                        🗑️ Tüm Verileri Sil
+                    </button>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #666; font-size: 14px;">
+                <p>Anoro KOAH İlaç Takip v1.0</p>
+                <p>Doktorunuzun talimatlarını takip edin</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MESAJ KUTUSU -->
+    <div id="toast" style="display: none; position: fixed; bottom: 20px; right: 20px; background: #2a6a9a; color: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);"></div>
+
+    <!-- TEK JAVASCRIPT -->
+    <script>
+        // VERİ DEPOLAMA
+        let history = JSON.parse(localStorage.getItem('anoro_history') || '[]');
+        let stock = JSON.parse(localStorage.getItem('anoro_stock') || '{"count": 30}');
+        
+        // SAYFA DEĞİŞTİRME
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(page + '-page').classList.add('active');
+            if (page === 'calendar') loadCalendar();
+            if (page === 'stock') loadStock();
+        }
+        
+        // İLAÇ ALMA
+        function takeMedicine() {
+            const now = new Date();
+            const record = {
+                date: now.toLocaleDateString('tr-TR'),
+                time: now.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}),
+                timestamp: now.getTime()
+            };
+            
+            history.push(record);
+            localStorage.setItem('anoro_history', JSON.stringify(history));
+            
+            // Stok azalt
+            stock.count = Math.max(0, stock.count - 1);
+            localStorage.setItem('anoro_stock', JSON.stringify(stock));
+            
+            updateUI();
+            showMessage('✅ İlaç kaydedildi!');
+            
+            // Bildirim
+            if (Notification.permission === 'granted') {
+                new Notification('💊 İlaç Alındı', {
+                    body: `${record.time} - Anoro kaydedildi`
+                });
+            }
+        }
+        
+        // ARAYÜZÜ GÜNCELLE
+        function updateUI() {
+            const today = new Date().toLocaleDateString('tr-TR');
+            const todayTaken = history.some(h => h.date === today);
+            
+            // Bugünkü durum
+            document.getElementById('today-status').textContent = todayTaken ? '✅ Bugün alındı' : '⏳ Bugün alınmadı';
+            document.getElementById('today-status').style.color = todayTaken ? '#4CAF50' : '#ff9800';
+            
+            // Son alınan zaman
+            if (history.length > 0) {
+                const last = history[history.length - 1];
+                document.getElementById('last-time').textContent = last.time;
+            }
+            
+            // İstatistikler
+            const weekAgo = Date.now() - 7*24*60*60*1000;
+            const monthAgo = Date.now() - 30*24*60*60*1000;
+            
+            const weekCount = history.filter(h => h.timestamp > weekAgo).length;
+            const monthCount = history.filter(h => h.timestamp > monthAgo).length;
+            
+            document.getElementById('week-rate').textContent = Math.min(Math.round((weekCount/7)*100), 100) + '%';
+            document.getElementById('month-rate').textContent = Math.min(Math.round((monthCount/30)*100), 100) + '%';
+            document.getElementById('stock').textContent = stock.count;
+        }
+        
+        // TAKVİM
+        function loadCalendar() {
+            const calendar = document.getElementById('calendar');
+            calendar.innerHTML = '';
+            
+            // Hafta günleri
+            const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+            days.forEach(day => {
+                const div = document.createElement('div');
+                div.className = 'day';
+                div.textContent = day;
+                calendar.appendChild(div);
+            });
+            
+            // Ayın günleri
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            
+            for (let i = 1; i <= lastDay.getDate(); i++) {
+                const day = new Date(now.getFullYear(), now.getMonth(), i);
+                const dayStr = day.toLocaleDateString('tr-TR');
+                const taken = history.some(h => h.date === dayStr);
+                const isToday = day.toDateString() === new Date().toDateString();
+                
+                const div = document.createElement('div');
+                div.className = 'day';
+                div.textContent = i;
+                
+                if (isToday) div.classList.add('today');
+                else if (taken) div.classList.add('taken');
+                else if (day < new Date()) div.classList.add('missed');
+                
+                calendar.appendChild(div);
+            }
+            
+            // İstatistikler
+            document.getElementById('taken').textContent = history.length;
+            const totalDays = Math.ceil((Date.now() - new Date(2024,0,1).getTime()) / (1000*60*60*24));
+            document.getElementById('missed').textContent = Math.max(0, totalDays - history.length);
+            document.getElementById('rate').textContent = Math.round((history.length/totalDays)*100) + '%';
+        }
+        
+        // STOK
+        function loadStock() {
+            document.getElementById('stock-count').textContent = stock.count;
+            
+            // Durum
+            const status = document.getElementById('stock-status');
+            const bar = document.getElementById('stock-bar');
+            
+            if (stock.count <= 3) {
+                status.textContent = '🚨 ACİL! Stok bitmek üzere';
+                status.style.color = '#f44336';
+                bar.style.background = '#f44336';
+                document.getElementById('stock-count').className = 'stock-count critical';
+            } else if (stock.count <= 7) {
+                status.textContent = '⚠️ Stok azalıyor';
+                status.style.color = '#ff9800';
+                bar.style.background = '#ff9800';
+                document.getElementById('stock-count').className = 'stock-count low';
+            } else {
+                status.textContent = '✅ Stok durumu iyi';
+                status.style.color = '#4CAF50';
+                bar.style.background = '#4CAF50';
+                document.getElementById('stock-count').className = 'stock-count';
+            }
+            
+            bar.style.width = Math.min((stock.count/30)*100, 100) + '%';
+        }
+        
+        function addStock(amount) {
+            stock.count += amount;
+            localStorage.setItem('anoro_stock', JSON.stringify(stock));
+            loadStock();
+            showMessage(`➕ ${amount} doz eklendi`);
+        }
+        
+        function adjustStock() {
+            const newCount = prompt('Yeni stok miktarı:', stock.count);
+            if (newCount !== null && !isNaN(newCount)) {
+                stock.count = parseInt(newCount);
+                localStorage.setItem('anoro_stock', JSON.stringify(stock));
+                loadStock();
+                showMessage('✅ Stok güncellendi');
+            }
+        }
+        
+        // HATIRLATICI
+        function setReminder() {
+            const time = document.getElementById('reminder').value;
+            localStorage.setItem('anoro_reminder', time);
+            showMessage(`⏰ Hatırlatıcı ${time} saatine ayarlandı`);
+            
+            // Bildirim izni
+            if (Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+        
+        // KOYU TEMA
+        function toggleDarkMode() {
+            const isDark = document.getElementById('dark-mode').checked;
+            document.body.style.background = isDark ? '#1a1a1a' : '#f0f9ff';
+            document.body.style.color = isDark ? '#ffffff' : '#000000';
+            localStorage.setItem('anoro_dark', isDark);
+        }
+        
+        // VERİ YÖNETİMİ
+        function exportData() {
+            const data = { history, stock, exportDate: new Date().toISOString() };
+            const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'anoro-backup.json';
+            a.click();
+            showMessage('📥 Veriler yedeklendi');
+        }
+        
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        history = data.history || [];
+                        stock = data.stock || {count: 30};
+                        localStorage.setItem('anoro_history', JSON.stringify(history));
+                        localStorage.setItem('anoro_stock', JSON.stringify(stock));
+                        updateUI();
+                        loadCalendar();
+                        loadStock();
+                        showMessage('✅ Veriler geri yüklendi');
+                    } catch {
+                        showMessage('❌ Geçersiz dosya');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+        
+        function clearData() {
+            if (confirm('TÜM verileriniz silinecek. Emin misiniz?')) {
+                localStorage.clear();
+                history = [];
+                stock = {count: 30};
+                updateUI();
+                loadCalendar();
+                loadStock();
+                showMessage('🗑️ Tüm veriler silindi');
+            }
+        }
+        
+        // MESAJ GÖSTER
+        function showMessage(text) {
+            const toast = document.getElementById('toast');
+            toast.textContent = text;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+        
+        // AYARLARI YÜKLE
+        function loadSettings() {
+            // Koyu tema
+            const dark = localStorage.getItem('anoro_dark') === 'true';
+            document.getElementById('dark-mode').checked = dark;
+            if (dark) toggleDarkMode();
+            
+            // Hatırlatıcı
+            const reminder = localStorage.getItem('anoro_reminder');
+            if (reminder) document.getElementById('reminder').value = reminder;
+        }
+        
+        // İLK YÜKLEME
+        window.onload = function() {
+            updateUI();
+            loadSettings();
+            
+            // PWA için
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').catch(console.log);
+            }
+            
+            // PWA yükleme butonu
+            window.addEventListener('beforeinstallprompt', e => {
+                e.preventDefault();
+                setTimeout(() => {
+                    const btn = document.createElement('button');
+                    btn.textContent = '📲 Ana Ekrana Ekle';
+                    btn.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#4CAF50;color:white;border:none;padding:12px 20px;border-radius:20px;font-size:14px;cursor:pointer;z-index:1000;';
+                    btn.onclick = () => e.prompt();
+                    document.body.appendChild(btn);
+                    setTimeout(() => btn.remove(), 10000);
+                }, 5000);
+            });
+        };
+    </script>
+</body>
+</html>
